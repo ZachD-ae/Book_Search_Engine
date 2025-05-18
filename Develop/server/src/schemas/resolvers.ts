@@ -1,80 +1,66 @@
-import User from '../models/User';
-import jwt from 'jsonwebtoken';
+import { AuthenticationError } from '../services/auth'; 
+import { User } from '../models'; 
+import { signToken } from '../services/auth';
+ 
 
-export const resolvers = {
+
+
+interface RemoveBookArgs {
+  bookId: string;
+}
+
+const resolvers = {
   Query: {
-    me: async (_: any, __: any, context: any) => {
-      if (!context.user) {
-        throw new Error('Not authenticated');
+    me: async (_parent: any, _args: any, context: any) => {
+      if (context.user) {
+        return User.findById(context.user._id).populate('savedBooks'); // Populate savedBooks to include the book details
       }
-      return await User.findById(context.user._id);
+      throw new AuthenticationError('Not authenticated');
     },
   },
 
   Mutation: {
-    login: async (_: any, { email, password }: any) => {
+    // User login
+    login: async (_parent: any, { email, password }: { email: string; password: string }) => {
       const user = await User.findOne({ email });
       if (!user) {
-        throw new Error('User not found');
+        throw new AuthenticationError('User not found');
       }
 
       const validPassword = await user.isCorrectPassword(password);
       if (!validPassword) {
-        throw new Error('Invalid credentials');
+        throw new AuthenticationError('Invalid credentials');
       }
 
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY || 'your-secret-key', { expiresIn: '1h' });
-
+      const token = signToken(user.username, user.email);
       return { token, user };
     },
 
-    addUser: async (_: any, { username, email, password }: any) => {
+    // Create a new user and return a token
+    addUser: async (_parent: any, { username, email, password }: { username: string; email: string; password: string }) => {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        throw new Error('User already exists');
+        throw new AuthenticationError('User already exists');
       }
 
       const user = new User({ username, email, password });
-
       await user.save();
 
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY || 'your-secret-key', { expiresIn: '1h' });
-
+      const token = signToken(user.username, user.email);
       return { token, user };
     },
 
-    saveBook: async (_: any, { authors, description, title, bookId, image, link }: any, context: any) => {
+
+
+    // Remove a book from the user's savedBooks
+    removeBook: async (_parent: any, { bookId }: RemoveBookArgs, context: any) => {
       if (!context.user) {
-        throw new Error('Not authenticated');
+        throw new AuthenticationError('Not authenticated');
       }
 
       const user = await User.findById(context.user._id);
       if (!user) {
-        throw new Error('User not found');
-      }
-
-      const existingBook = user.savedBooks.find((book: any) => book.bookId === bookId);
-      if (existingBook) {
-        throw new Error('Book is already saved');
-      }
-
-      const book = { authors, description, title, bookId, image, link };
-      const bookSubdoc = user.savedBooks.create(book);
-      user.savedBooks.push(bookSubdoc);
-
-      await user.save();
-
-      return user;
-    },
-
-    removeBook: async (_: any, { bookId }: any, context: any) => {
-      if (!context.user) {
-        throw new Error('Not authenticated');
-      }
-
-      const user = await User.findById(context.user._id);
-      if (!user) {
-        throw new Error('User not found');
+        throw new AuthenticationError('User not found');
       }
 
       user.savedBooks = user.savedBooks.filter((book: any) => book.bookId !== bookId);
@@ -84,3 +70,5 @@ export const resolvers = {
     },
   },
 };
+
+export default resolvers;
