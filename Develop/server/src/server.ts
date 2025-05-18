@@ -1,21 +1,29 @@
 import express from 'express';
-import path from 'node:path';
-import db from './config/connection.js';
-import routes from './routes/index.js';
+import { ApolloServer } from 'apollo-server-express';
+import { typeDefs } from './schemas/typeDefs';
+import { resolvers } from './schemas/resolvers';
+import { authenticateToken } from './auth';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context: ({ req }) => {
+    // Authenticate user and pass user info to resolvers
+    const user = authenticateToken(req);
 
-// if we're in production, serve client/build as static assets
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-}
+    // If the user is authenticated, return it in the context
+    if (!user) {
+      throw new Error('Not authenticated');
+    }
 
-app.use(routes);
+    return { user };
+  },
+});
 
-db.once('open', () => {
-  app.listen(PORT, () => console.log(`🌍 Now listening on localhost:${PORT}`));
+server.applyMiddleware({ app });
+
+app.listen(3001, () => {
+  console.log('Server is running on http://localhost:3001/graphql');
 });
