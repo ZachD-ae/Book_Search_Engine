@@ -5,9 +5,9 @@ import SavedBooks from './pages/SavedBooks';
 import SignupForm from './components/SignupForm';
 import LoginForm from './components/LoginForm';
 
-// Set up Apollo Client
+
 const client = new ApolloClient({
-  uri: 'http://localhost:3001/graphql', // Change this to your Apollo Server URL
+  uri: 'http://localhost:3001/graphql', 
   cache: new InMemoryCache(),
 });
 

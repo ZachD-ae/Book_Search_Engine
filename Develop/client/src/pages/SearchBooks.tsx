@@ -4,12 +4,12 @@ import { SAVE_BOOK } from '../utils/mutations';
 import { GET_BOOKS } from '../utils/queries';
 
 const SearchBooks = () => {
-  const { loading, error, data } = useQuery(GET_BOOKS); 
+  const { loading, error, data } = useQuery(GET_BOOKS); // Fetch the books from the GraphQL API
   const [saveBook] = useMutation(SAVE_BOOK);
   const [savedBookIds, setSavedBookIds] = useState<string[]>([]);
 
-  if (loading) return <p>Loading books...</p>; 
-  if (error) return <p>Error fetching books: {error.message}</p>; 
+  if (loading) return <p>Loading books...</p>; // Display loading state
+  if (error) return <p>Error fetching books: {error.message}</p>; // Display error state
 
   const handleSaveBook = async (book: any) => {
     try {
